@@ -3,7 +3,7 @@ import pytube
 import os
 import requests
 import re
-from moviepy.editor import VideoFileClip
+from moviepy.editor import *
 
 bot = telebot.TeleBot('6273204407:AAHc-578ru2Uie1JQnypi7YjdXL3fUU2-ew')
 
@@ -11,7 +11,7 @@ bot = telebot.TeleBot('6273204407:AAHc-578ru2Uie1JQnypi7YjdXL3fUU2-ew')
 @bot.message_handler(commands=['start'])
 def start(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    btn1 = types.KeyboardButton("help")
+    btn1 = types.KeyboardButton("Дополнительные Данные")
     btn2 = types.KeyboardButton("Конвертор видео")
     btn3 = types.KeyboardButton("Скачивание видео со сторонних ресурсов")
     btn4 = types.KeyboardButton("Скачивание фото и документов со сторонних ресурсов")
@@ -23,12 +23,15 @@ def start(message):
 youtube = False
 tiktok = False
 fail = False
+konvertorr_AVI = False
+konvertorr_MPEG = False
+konvertorr_MP3 = False
 
 
 @bot.message_handler(content_types=['text'])
 def choose(message):
-    global youtube, tiktok, fail
-    if message.text == 'help':
+    global youtube, tiktok, fail, konvertorr_AVI, konvertorr_MPEG, konvertorr_MP3
+    if message.text == 'Дополнительные Данные':
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         btn1 = types.KeyboardButton('Сколько времени')
         btn2 = types.KeyboardButton('Цель проекта')
@@ -96,6 +99,29 @@ def choose(message):
         bot.send_message(message.chat.id, text="Введите ссылку на файл для скачивания: ",
                          reply_markup=types.ReplyKeyboardRemove())
 
+    elif message.text == 'Конвертор видео':
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        markup.add('MP3', 'AVI', 'MOV')
+        bot.send_message(message.chat.id, text="Выберите формат в который хотите конвертировать видео",
+                         reply_markup=markup)
+    elif message.text == 'MP3':
+        konvertorr_MP3 = True
+        bot.send_message(message.chat.id, text="Пришлите видео", reply_markup=types.ReplyKeyboardRemove())
+
+    elif message.text == 'AVI':
+        konvertorr_AVI = True
+        bot.send_message(message.chat.id, text="Пришлите видео", reply_markup=types.ReplyKeyboardRemove())
+
+    elif message.text == 'MPEG':
+        konvertorr_MPEG = True
+        bot.send_message(message.chat.id, text="Пришлите видео", reply_markup=types.ReplyKeyboardRemove())
+
+    elif konvertorr_MP3:
+        konvertorrMP(message)
+
+    elif konvertorr_AVI:
+        konvertorr_AV(message)
+
     elif message.text == 'Вернуться':
         start(message)
 
@@ -120,7 +146,7 @@ def downld_youtube(message):
             btn1 = types.KeyboardButton("Вернуться")
             markup.add(btn1)
             bot.send_message(message.chat.id, 'видео успешно загружено!', reply_markup=markup)
-        except Exception as e:
+        except Exception:
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             btn1 = types.KeyboardButton("Вернуться")
             markup.add(btn1)
@@ -181,6 +207,63 @@ def down_fail(message):
         btn1 = types.KeyboardButton('Вернуться')
         markup.add(btn1)
         bot.send_message(message.chat.id, text="Выберите действие", reply_markup=markup)
+
+
+@bot.message_handler(content_types=['video'])
+def konvertorrMP(message):
+    global konvertorr_MP3
+    konvertorr_MP3 = False
+    if message.text == 'Вернуться':
+        start(message)
+    else:
+        file_info = bot.get_file(message.video.file_id)
+        downloaded_file = bot.download_file(file_info.file_path)
+
+        with open('video.mp4', 'wb') as video_file:
+            video_file.write(downloaded_file)
+
+        video_clip = VideoFileClip('video.mp4')
+        audio_clip = video_clip.audio
+        audio_clip.write_audiofile("audio.mp3")
+
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        btn1 = types.KeyboardButton('Вернуться')
+        markup.add(btn1)
+
+        audio_file = open("audio.mp3", "rb")
+        bot.send_audio(message.chat.id, audio_file)
+
+        bot.send_message(message.chat.id, text="Выберите действие", reply_markup=markup)
+
+        konvertorr_MP3 = False
+
+        return "audio.mp3"
+
+
+
+@bot.message_handler(content_types=['video'])
+def konvertorr_AV(message):
+    global konvertorr_AVI
+    konvertorr_AVI = False
+    if message.text == 'Вернуться':
+        start(message)
+    else:
+        file_info = bot.get_file(message.video.file_id)
+        downloaded_file = bot.download_file(file_info.file_path)
+        with open('video.mp4', 'wb') as video:
+            video.write(downloaded_file)
+        clip = VideoFileClip("video.mp4")
+        clip.write_videofile("video.avi", codec='mpeg4', fps=144, bitrate='5000k')
+        with open("video.avi", "rb") as video_file:
+            bot.send_video(message.chat.id, video_file)
+        os.remove("video.mp4")
+        os.remove("video.avi")
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        btn1 = types.KeyboardButton('Вернуться')
+        markup.add(btn1)
+        bot.send_message(message.chat.id, text="Выберите действие", reply_markup=markup)
+
+
 
 
 bot.polling()
