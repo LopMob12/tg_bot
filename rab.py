@@ -250,4 +250,4 @@ def konvertorr_MKV(message):
         bot.send_message(message.chat.id, text="Выберите действие", reply_markup=markup)
 
 
-bot.polling()
+bot.polling(none_stop=True)
