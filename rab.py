@@ -25,11 +25,12 @@ youtube = False
 tiktok = False
 fail = False
 audio = False
+youtube_music = False
 
 
 @bot.message_handler(content_types=['text'])
 def choose(message):
-    global youtube, tiktok, fail, audio
+    global youtube, tiktok, fail, audio, youtube_music
     if message.text == 'Дополнительные Данные':
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         markup.add('Сколько времени', 'Цель проекта', 'Вернуться')
@@ -77,9 +78,12 @@ def choose(message):
     elif audio:
         down_audio(message)
 
+    elif youtube_music:
+        down_music(message)
+
     elif message.text == 'Скачивание фото, аудио и документов со сторонних ресурсов':
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        markup.add('Скачивание фото', 'Скачивание документов', 'Скачивание аудио', 'Вернуться')
+        markup.add('Скачивание фото', 'Скачивание документов', 'Скачивание аудио', 'Скачивание музыки с ютуба', 'Вернуться')
         bot.send_message(message.chat.id, text="Выберите опцию", reply_markup=markup)
 
     elif message.text == 'Скачивание фото':
@@ -95,6 +99,11 @@ def choose(message):
     elif message.text == 'Скачивание аудио':
         audio = True
         bot.send_message(message.chat.id, text="Введите ссылку на файл для скачивания(Длительность аудио по времени не должна превышать 5 минут): ",
+                         reply_markup=types.ReplyKeyboardRemove())
+
+    elif message.text == 'Скачивание музыки с ютуба':
+        youtube_music = True
+        bot.send_message(message.chat.id, text="Введите ссылку на видео для скачивания песни: ",
                          reply_markup=types.ReplyKeyboardRemove())
 
     elif message.text == 'Конвертор видео':
@@ -206,8 +215,23 @@ def down_audio(message):
         filename = user_input.split('/')[-1]
         r = requests.get(user_input, stream=True)
         open(filename, "wb").write(r.content)
-        bot.send_document(message.chat.id, open(filename, 'rb'))
+        bot.send_audio(message.chat.id, open(filename, 'rb'))
 
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        btn1 = types.KeyboardButton('Вернуться')
+        markup.add(btn1)
+        bot.send_message(message.chat.id, text="Выберите действие", reply_markup=markup)
+
+
+def down_music(message):
+    if message.text == 'Вернуться':
+        start(message)
+    else:
+        user_input = message.text
+        yt = pytube.YouTube(user_input, use_oauth=True)
+        stream = yt.streams.get_by_itag(251)
+        f = open(stream.download(), 'rb')
+        bot.send_document(message.chat.id, f)
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         btn1 = types.KeyboardButton('Вернуться')
         markup.add(btn1)
