@@ -1,6 +1,5 @@
 from telebot import *
 import pytube
-import os
 import requests
 import re
 from moviepy.editor import *
@@ -26,6 +25,8 @@ tiktok = False
 fail = False
 audio = False
 youtube_music = False
+lnk = ''
+qwl = False
 
 
 @bot.message_handler(content_types=['text'])
@@ -66,7 +67,10 @@ def choose(message):
                                                "https://www.tiktok.com/",
                          reply_markup=types.ReplyKeyboardRemove())
 
-    elif youtube:
+    elif youtube and not qwl:
+        choose_quality(message)
+
+    elif youtube and qwl:
         downld_youtube(message)
 
     elif tiktok:
@@ -125,36 +129,60 @@ def choose(message):
 
 
 @bot.message_handler(content_types=['text'])
+def choose_quality(message):
+    global lnk, qwl
+    qwl = True
+    lnk = message.text
+    btn1 = types.KeyboardButton('144p')
+    btn2 = types.KeyboardButton('240p')
+    btn3 = types.KeyboardButton('360p')
+    btn4 = types.KeyboardButton('720p')
+    btn5 = types.KeyboardButton('1080p')
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(btn1, btn2, btn3, btn4, btn5)
+    bot.send_message(message.chat.id, text="Выберите качество видео", reply_markup=markup)
+
+
+@bot.message_handler(content_types=['text'])
 def downld_youtube(message):
-    ytlink = message.text
+    global youtube, qwl
+    ytlink = lnk
+    quality = message.text
     if str(ytlink).startswith('https://www.youtube.com/watch'):
-        bot.send_message(message.chat.id, 'видео загружается, подождите пожалуйста...')
+        bot.send_message(message.chat.id, 'видео загружается, подождите пожалуйста...',
+                         reply_markup=types.ReplyKeyboardRemove())
         try:
             youtubelink = pytube.YouTube(ytlink)
-            video = youtubelink.streams.get_highest_resolution()
+            stream = youtubelink.streams
+            video = stream.filter(res=quality).desc().first()
             if os.path.exists('res.mp4'):
                 os.remove('res.mp4')
-            out_file = video.download(filename='res')
-            base, ext = os.path.splitext(out_file)
-            new_file = base + '.mp4'
-            os.rename(out_file, new_file)
+            if os.path.exists('audio.mp3'):
+                os.remove('audio.mp3')
+            if os.path.exists('video.mp4'):
+                os.remove('video.mp4')
+            video.download(filename='video.mp4')
+            audio = stream.filter(adaptive=False, only_audio=True, abr="160kbps").desc().first()
+            audio.download(filename='audio.mp3')
+            video_clip = VideoFileClip('video.mp4')
+            audio_clip = AudioFileClip('audio.mp3')
+            video_clip_with_audio = video_clip.set_audio(audio_clip)
+            video_clip_with_audio.write_videofile("res.mp4")
             vd = open('res.mp4', 'rb')
             bot.send_video(message.chat.id, vd)
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             btn1 = types.KeyboardButton("Вернуться")
             markup.add(btn1)
             bot.send_message(message.chat.id, 'видео успешно загружено!', reply_markup=markup)
+            youtube = False
+            qwl = False
         except Exception:
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             btn1 = types.KeyboardButton("Вернуться")
             markup.add(btn1)
             bot.send_message(message.chat.id, 'ошибка при загрузке видео, попробуйте еще раз', reply_markup=markup)
-    else:
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        btn1 = types.KeyboardButton("Вернуться")
-        markup.add(btn1)
-        if message.text == 'Вернуться':
-            start(message)
+            youtube = False
+            qwl = False
 
 
 def get_tiktok_video_id(url):
@@ -300,18 +328,19 @@ def konvertorr_MKV(message):
         else:
             file_info = bot.get_file(message.video.file_id)
             downloaded_file = bot.download_file(file_info.file_path)
-
             with open('video.mp4', 'wb') as video:
                 video.write(downloaded_file)
 
             clip = VideoFileClip("video.mp4")
             clip.write_videofile("video.mkv", codec='libx264')
 
-            with open("video.mkv", "rb") as video_file:
-                bot.send_video(message.chat.id, video=video_file)
-
-            os.remove("video.mp4")
-            os.remove("video.mkv")
+            if os.path.isfile("video.mkv"):
+                with open("video.mkv", "rb") as video_file:
+                    bot.send_video(message.chat.id, video=video_file)
+                os.remove("video.mp4")
+                os.remove("video.mkv")
+            else:
+                bot.send_message(message.chat.id, text="Произошла ошибка при конвертации видео.")
 
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             btn1 = types.KeyboardButton('Вернуться')
@@ -319,8 +348,9 @@ def konvertorr_MKV(message):
             bot.send_message(message.chat.id, text="Выберите действие", reply_markup=markup)
     except Exception as e:
         bot.send_message(message.chat.id,
-                         text="Произошла ошибка при конвертации видео. "
-                              "Пожалуйста, попробуйте еще раз или обратитесь к администратору.")
+                         text="Произошла ошибка при конвертации видео."
+                              " Пожалуйста, попробуйте еще раз или обратитесь к администратору.")
+
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         btn1 = types.KeyboardButton('Вернуться')
         markup.add(btn1)
