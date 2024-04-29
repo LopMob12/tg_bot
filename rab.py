@@ -4,7 +4,7 @@ import requests
 import re
 from moviepy.editor import *
 
-bot = telebot.TeleBot('6273204407:AAHc-578ru2Uie1JQnypi7YjdXL3fUU2-ew')
+bot = telebot.TeleBot('6852294591:AAGbTddCmXkAa7k4UsdktKKhMvg52UWtt8M')
 
 
 @bot.message_handler(commands=['start'])
@@ -169,7 +169,7 @@ def downld_youtube(message):
             video_clip_with_audio = video_clip.set_audio(audio_clip)
             video_clip_with_audio.write_videofile("res.mp4")
             vd = open('res.mp4', 'rb')
-            bot.send_video(message.chat.id, vd)
+            bot.send_video(message.chat.id, vd, timeout=10000)
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             btn1 = types.KeyboardButton("Вернуться")
             markup.add(btn1)
