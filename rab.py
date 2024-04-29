@@ -14,20 +14,23 @@ def start(message):
     btn1 = types.KeyboardButton("Дополнительные Данные")
     btn2 = types.KeyboardButton("Конвертор видео")
     btn3 = types.KeyboardButton("Скачивание видео со сторонних ресурсов")
-    btn4 = types.KeyboardButton("Скачивание фото и документов со сторонних ресурсов")
+    btn4 = types.KeyboardButton("Скачивание фото, аудио и документов со сторонних ресурсов")
     markup.add(btn1, btn2, btn3, btn4)
 
     bot.send_message(message.chat.id, f"Привет {message.from_user.username}! Я бот. Вот мои функции",
                      reply_markup=markup)
 
+
 youtube = False
 tiktok = False
 fail = False
+audio = False
+youtube_music = False
 
 
 @bot.message_handler(content_types=['text'])
 def choose(message):
-    global youtube, tiktok, fail
+    global youtube, tiktok, fail, audio, youtube_music
     if message.text == 'Дополнительные Данные':
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         markup.add('Сколько времени', 'Цель проекта', 'Вернуться')
@@ -72,9 +75,15 @@ def choose(message):
     elif fail:
         down_fail(message)
 
-    elif message.text == 'Скачивание фото и документов со сторонних ресурсов':
+    elif audio:
+        down_audio(message)
+
+    elif youtube_music:
+        down_music(message)
+
+    elif message.text == 'Скачивание фото, аудио и документов со сторонних ресурсов':
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        markup.add('Скачивание фото', 'Скачивание документов', 'Вернуться')
+        markup.add('Скачивание фото', 'Скачивание документов', 'Скачивание аудио', 'Скачивание музыки с ютуба', 'Вернуться')
         bot.send_message(message.chat.id, text="Выберите опцию", reply_markup=markup)
 
     elif message.text == 'Скачивание фото':
@@ -85,6 +94,16 @@ def choose(message):
     elif message.text == 'Скачивание документов':
         fail = True
         bot.send_message(message.chat.id, text="Введите ссылку на файл для скачивания: ",
+                         reply_markup=types.ReplyKeyboardRemove())
+
+    elif message.text == 'Скачивание аудио':
+        audio = True
+        bot.send_message(message.chat.id, text="Введите ссылку на файл для скачивания(Длительность аудио по времени не должна превышать 5 минут): ",
+                         reply_markup=types.ReplyKeyboardRemove())
+
+    elif message.text == 'Скачивание музыки с ютуба':
+        youtube_music = True
+        bot.send_message(message.chat.id, text="Введите ссылку на видео для скачивания песни: ",
                          reply_markup=types.ReplyKeyboardRemove())
 
     elif message.text == 'Конвертор видео':
@@ -188,37 +207,86 @@ def down_fail(message):
         bot.send_message(message.chat.id, text="Выберите действие", reply_markup=markup)
 
 
-def konvertorr_MP(message):
+def down_audio(message):
     if message.text == 'Вернуться':
         start(message)
     else:
-        file_info = bot.get_file(message.video.file_id)
-        downloaded_file = bot.download_file(file_info.file_path)
-        with open('video.mp4', 'wb') as video_file:
-            video_file.write(downloaded_file)
-        video_clip = VideoFileClip('video.mp4')
-        audio_clip = video_clip.audio
-        audio_clip.write_audiofile("audio.mp3")
+        user_input = message.text
+        filename = user_input.split('/')[-1]
+        r = requests.get(user_input, stream=True)
+        open(filename, "wb").write(r.content)
+        bot.send_audio(message.chat.id, open(filename, 'rb'))
+
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         btn1 = types.KeyboardButton('Вернуться')
         markup.add(btn1)
-        audio_file = open("audio.mp3", "rb")
-        bot.send_audio(message.chat.id, audio_file)
+        bot.send_message(message.chat.id, text="Выберите действие", reply_markup=markup)
+
+
+def down_music(message):
+    if message.text == 'Вернуться':
+        start(message)
+    else:
+        user_input = message.text
+        yt = pytube.YouTube(user_input, use_oauth=True)
+        stream = yt.streams.get_by_itag(251)
+        f = open(stream.download(), 'rb')
+        bot.send_document(message.chat.id, f)
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        btn1 = types.KeyboardButton('Вернуться')
+        markup.add(btn1)
+        bot.send_message(message.chat.id, text="Выберите действие", reply_markup=markup)
+
+
+def konvertorr_MP(message):
+    try:
+        if message.text == 'Вернуться':
+            start(message)
+        else:
+            file_info = bot.get_file(message.video.file_id)
+            downloaded_file = bot.download_file(file_info.file_path)
+            with open('video.mp4', 'wb') as video_file:
+                video_file.write(downloaded_file)
+            video_clip = VideoFileClip('video.mp4')
+            audio_clip = video_clip.audio
+            audio_clip.write_audiofile("audio.mp3")
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            btn1 = types.KeyboardButton('Вернуться')
+            markup.add(btn1)
+            audio_file = open("audio.mp3", "rb")
+            bot.send_audio(message.chat.id, audio_file)
+            bot.send_message(message.chat.id, text="Выберите действие", reply_markup=markup)
+    except Exception as e:
+        bot.send_message(message.chat.id,
+                         text="Произошла ошибка при конвертации видео в "
+                              "аудио. Пожалуйста, попробуйте еще раз или обратитесь к администратору.")
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        btn1 = types.KeyboardButton('Вернуться')
+        markup.add(btn1)
         bot.send_message(message.chat.id, text="Выберите действие", reply_markup=markup)
 
 
 def konvertorr_AV(message):
-    if message.text == 'Вернуться':
-        start(message)
-    else:
-        file_info = bot.get_file(message.video.file_id)
-        downloaded_file = bot.download_file(file_info.file_path)
-        with open('video.mp4', 'wb') as video:
-            video.write(downloaded_file)
-        clip = VideoFileClip("video.mp4")
-        clip.write_videofile("video.avi", codec='mpeg4', fps=144, bitrate='5000k')
-        with open("video.avi", "rb") as video_file:
-            bot.send_video(message.chat.id, video_file)
+    try:
+        if message.text == 'Вернуться':
+            start(message)
+        else:
+            file_info = bot.get_file(message.video.file_id)
+            downloaded_file = bot.download_file(file_info.file_path)
+            with open('video.mp4', 'wb') as video:
+                video.write(downloaded_file)
+            clip = VideoFileClip("video.mp4")
+            clip.write_videofile("video.avi", codec='mpeg4', fps=144, bitrate='5000k')
+            with open("video.avi", "rb") as video_file:
+                bot.send_video(message.chat.id, video_file)
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            btn1 = types.KeyboardButton('Вернуться')
+            markup.add(btn1)
+            bot.send_message(message.chat.id, text="Выберите действие", reply_markup=markup)
+    except Exception as e:
+        bot.send_message(message.chat.id,
+                         text="Произошла ошибка при конвертации видео. "
+                              "Пожалуйста, попробуйте еще раз или обратитесь к администратору.")
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         btn1 = types.KeyboardButton('Вернуться')
         markup.add(btn1)
@@ -226,28 +294,37 @@ def konvertorr_AV(message):
 
 
 def konvertorr_MKV(message):
-    if message.text == 'Вернуться':
-        start(message)
-    else:
-        file_info = bot.get_file(message.video.file_id)
-        downloaded_file = bot.download_file(file_info.file_path)
+    try:
+        if message.text == 'Вернуться':
+            start(message)
+        else:
+            file_info = bot.get_file(message.video.file_id)
+            downloaded_file = bot.download_file(file_info.file_path)
 
-        with open('video.mp4', 'wb') as video:
-            video.write(downloaded_file)
+            with open('video.mp4', 'wb') as video:
+                video.write(downloaded_file)
 
-        clip = VideoFileClip("video.mp4")
-        clip.write_videofile("video.mkv", codec='libx264')
+            clip = VideoFileClip("video.mp4")
+            clip.write_videofile("video.mkv", codec='libx264')
 
-        with open("video.mkv", "rb") as video_file:
-            bot.send_video(message.chat.id, video=video_file)
+            with open("video.mkv", "rb") as video_file:
+                bot.send_video(message.chat.id, video=video_file)
 
-        os.remove("video.mp4")
-        os.remove("video.mkv")
+            os.remove("video.mp4")
+            os.remove("video.mkv")
 
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            btn1 = types.KeyboardButton('Вернуться')
+            markup.add(btn1)
+            bot.send_message(message.chat.id, text="Выберите действие", reply_markup=markup)
+    except Exception as e:
+        bot.send_message(message.chat.id,
+                         text="Произошла ошибка при конвертации видео. "
+                              "Пожалуйста, попробуйте еще раз или обратитесь к администратору.")
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         btn1 = types.KeyboardButton('Вернуться')
         markup.add(btn1)
         bot.send_message(message.chat.id, text="Выберите действие", reply_markup=markup)
 
 
-bot.polling()
+bot.polling(none_stop=True)
