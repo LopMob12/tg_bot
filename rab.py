@@ -162,7 +162,7 @@ def downld_youtube(message):
             if os.path.exists('video.mp4'):
                 os.remove('video.mp4')
             video.download(filename='video.mp4')
-            audio = stream.filter(adaptive=False, only_audio=True, abr="160kbps").desc().first()
+            audio = stream.filter(adaptive=True, only_audio=True).desc().first()
             audio.download(filename='audio.mp3')
             video_clip = VideoFileClip('video.mp4')
             audio_clip = AudioFileClip('audio.mp3')
