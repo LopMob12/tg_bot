@@ -328,18 +328,19 @@ def konvertorr_MKV(message):
         else:
             file_info = bot.get_file(message.video.file_id)
             downloaded_file = bot.download_file(file_info.file_path)
-
             with open('video.mp4', 'wb') as video:
                 video.write(downloaded_file)
 
             clip = VideoFileClip("video.mp4")
             clip.write_videofile("video.mkv", codec='libx264')
 
-            with open("video.mkv", "rb") as video_file:
-                bot.send_video(message.chat.id, video=video_file)
-
-            os.remove("video.mp4")
-            os.remove("video.mkv")
+            if os.path.isfile("video.mkv"):
+                with open("video.mkv", "rb") as video_file:
+                    bot.send_video(message.chat.id, video=video_file)
+                os.remove("video.mp4")
+                os.remove("video.mkv")
+            else:
+                bot.send_message(message.chat.id, text="Произошла ошибка при конвертации видео.")
 
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             btn1 = types.KeyboardButton('Вернуться')
@@ -347,8 +348,9 @@ def konvertorr_MKV(message):
             bot.send_message(message.chat.id, text="Выберите действие", reply_markup=markup)
     except Exception as e:
         bot.send_message(message.chat.id,
-                         text="Произошла ошибка при конвертации видео. "
-                              "Пожалуйста, попробуйте еще раз или обратитесь к администратору.")
+                         text="Произошла ошибка при конвертации видео."
+                              " Пожалуйста, попробуйте еще раз или обратитесь к администратору.")
+
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         btn1 = types.KeyboardButton('Вернуться')
         markup.add(btn1)
