@@ -1,0 +1,5 @@
+telebot
+pytube
+requests
+re
+moviepy
